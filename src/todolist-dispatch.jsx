@@ -1,27 +1,20 @@
 import React,{ useState,PureComponent,useCallback,useEffect,useMemo,memo,useRef} from 'react';
 import './App.css';
-import {
-  createAdd,
-  createSet,
-  createRemove,
-  createToggle
-} from './action'
 
 function TodoItem(props) {
   const {
     todo:{
       id,text,complete
     },
-    removeTodo,
-    toggleTodo
+    dispatch
   } = props;
   const onChange = () =>{
-    // dispatch(createToggle(id))
-    toggleTodo(id)
+    dispatch({type:'toggle',payload:id})
+    // toggleTodo(id)
   }
   const onClickRemove = () =>{
-    removeTodo(id)
-    // dispatch(createRemove(id))
+    // removeTodo(id)
+    dispatch({type:'remove',payload:id})
   }
   return <li className="todo-item">
     <input type="checkbox" onChange={onChange} checked={complete} />
@@ -31,33 +24,19 @@ function TodoItem(props) {
 }
 
 function Todos(props) {
-  const { todos, removeTodo,toggleTodo } = props;
+  const { todos, dispatch } = props;
 
   return (
     <ul>
       {
-        todos.map(todo => <TodoItem key={todo.id} todo={todo} removeTodo={removeTodo} toggleTodo={toggleTodo} />)
+        todos.map(todo => <TodoItem key={todo.id} todo={todo} dispatch={dispatch} />)
       }
     </ul>
   )
 }
 let idSeq = new Date()
-
-function bindActionCreators(actionCreators,dispatch){
-  const ret ={}
-  for(let key in actionCreators){
-    ret[key] = function(...args) {
-      const actionCreator = actionCreators[key]
-      const action = actionCreator(...args)
-      dispatch(action)
-    }
-  }
-  return ret;
-}
-
-
 function Control(props) {
-  const { addTodo } = props;
+  const { dispatch } = props;
   const inputText = useRef();
   const onSubmit = (e) => {
     e.preventDefault();
@@ -70,16 +49,11 @@ function Control(props) {
     //   text: textValue,
     //   complete: false
     // })
-    // dispatch(createAdd({
-    //   id: ++idSeq,
-    //   text: textValue,
-    //   complete: false
-    // }))
-    addTodo({
+    dispatch({type:'add',payload:{
       id: ++idSeq,
       text: textValue,
       complete: false
-    })
+    }})
     inputText.current.value = ''
   }
   return (
@@ -95,11 +69,13 @@ const SL_KEY = '_todoskey_'
 function App(props){
   const [todos, setTodos] = useState([]);
   const addTodo = (todo) =>{
+    dispatch({type:'add',payload:todo})
   }
   const removeTodo = (id) =>{
     // setTodos(todos => todos.filter(todo =>{
     //   return todo.id !== id
     // }))
+    dispatch({type:'remove',payload:id})
   }
   const toggleTodo = (id) =>{
     // setTodos(todos => todos.map(todo => {
@@ -108,9 +84,10 @@ function App(props){
     //     complete: !todo.complete
     //   } : todo
     // }))
+    dispatch({type:'toggle',payload:id})
   }
 
-  const dispatch = useCallback((action) => {
+  const dispatch = (action) => {
     const { type,payload } = action;
     switch(type){
       case 'set':
@@ -134,12 +111,12 @@ function App(props){
         break;
       default:
     }
-  },[])
+  }
 
 
   useEffect(() =>{
     const todos =JSON.parse(localStorage.getItem(SL_KEY) || '[]') 
-    dispatch(createSet(todos))
+    dispatch({type:'set',payload:todos})
   },[])
   useEffect(()=>{
     localStorage.setItem(SL_KEY,JSON.stringify(todos))
@@ -147,21 +124,8 @@ function App(props){
   
   return (
     <div className="todo-list">
-      <Control 
-      {
-        ...bindActionCreators({
-          addTodo: createAdd
-        },dispatch)
-      }
-      />
-      <Todos todos={todos}
-      {
-        ...bindActionCreators({
-          removeTodo:createRemove,
-          toggleTodo:createToggle
-        },dispatch)
-      }
-      />
+      <Control dispatch={dispatch} />
+      <Todos dispatch={dispatch} todos={todos} />
     </div>
   )
 }
